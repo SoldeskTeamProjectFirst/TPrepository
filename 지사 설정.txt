@@ -1,0 +1,87 @@
+---
+
+### Branch-R1
+
+```
+en
+conf t
+int lo 0
+ip add 10.1.1.1 255.255.255.0
+int g0/1
+ip add 10.1.12.1 255.255.255.252
+no sh   // 기본 ip 설정
+
+router ospf 1
+router-id 1.1.1.1
+int lo 0
+ip ospf 1 area 0
+int g0/1
+ip ospf 1 area 0  // ospf 설정
+```
+
+### Branch-ASA
+
+```
+en
+conf t
+int eth 0
+nameif outside
+security-level 0
+ip add 10.1.12.2 255.255.255.252
+no sh
+int eth 1
+nameif inside1
+security-level 100
+ip add 10.1.23.1 255.255.255.252
+no sh
+int eth 2
+nameif inside2
+security-level 100
+ip add 10.1.24.1 255.255.255.252 
+no sh // 기본 ip 설정
+
+route outside 0.0.0.0 0.0.0.0 10.1.12.1 //모든 트래픽을 outside로보내는 기본경로설정
+
+object network INSIDE1
+subnet 10.1.23.0 255.255.255.252
+nat (inside1,outside) dynamic interface
+object network INSIDE2
+subnet 10.1.24.0 255.255.255.252
+nat (inside2,outside) dynamic interface //호스트가 isp로 나갈수있도록 구성
+```
+
+### Branch-SW1
+
+```
+en
+conf t
+int lo 0
+ip add 10.1.4.4 255.255.255.0
+int g0/0
+ip add 10.1.23.2 255.255.255.252
+no sh  // 기본 ip 설정
+```
+
+### Branch-SW2
+
+```
+en
+conf t
+int lo 0
+ip add 10.1.5.5 255.255.255.0
+int g0/0
+ip add 10.1.24.2 255.255.255.252
+no sh  // 기본 ip 설정
+```
+
+### PC1
+
+```
+ip 10.1.23.1/24
+```
+
+### PC2
+
+```
+ip 10.1.24.1/24
+```

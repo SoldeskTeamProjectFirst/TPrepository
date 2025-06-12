@@ -1,0 +1,320 @@
+---
+
+### DR-R1
+
+```
+en
+conf t
+hostname DR-R1
+
+int lo0
+ip add 134.1.1.1 255.255.255.255
+no sh
+
+int g0/1
+ip add 134.0.18.1 255.255.255.252
+no sh
+
+int g0/2
+ip add 134.0.19.1 255.255.255.252
+no sh
+
+int g0/3
+ip add 134.0.12.1 255.255.255.252
+no sh
+
+** OSPF **
+router ospf 1
+router-id 134.1.1.1
+int lo0
+ip ospf 1 area 0
+ip ospf net point-to-point
+int g0/1
+ip ospf 1 area 0
+int g0/2
+ip ospf 1 area 0
+int g0/3
+ip ospf 1 area 0
+```
+
+### DR-R2
+
+```
+en
+conf t
+hostname DR-R2
+
+int lo0
+ip add 134.2.2.2 255.255.255.255
+no sh
+
+int g0/1
+ip add 134.0.28.1 255.255.255.252
+no sh
+
+int g0/2
+ip add 134.0.29.1 255.255.255.252
+no sh
+
+int g0/3
+ip add 134.0.12.2 255.255.255.252
+no sh
+
+** OSPF **
+router ospf 1
+router-id 134.2.2.2
+int lo0
+ip ospf 1 area 0
+ip ospf net point-to-point
+int g0/1
+ip ospf 1 area 0
+int g0/2
+ip ospf 1 area 0
+int g0/3
+ip ospf 1 area 0
+```
+
+### DR-ASA1
+
+```
+! out 쪽의 level 0 은 임시
+! same-security-traffic permit inter-interface - 레벨이 같을때 테스트 용으로 사용
+
+en
+conf t
+hostname DR-ASA1
+
+int eth1
+security-level 100
+nameif in1
+ip add 134.0.38.1 255.255.255.248 standby 134.0.38.3
+no sh
+int eth2
+security-level 100
+nameif in2
+ip add 134.0.48.1 255.255.255.248 standby 134.0.48.3
+no sh
+int eth3
+security-level 0
+nameif out1
+ip add 134.0.28.2 255.255.255.248 standby 134.0.28.3
+no sh
+int eth4
+security-level 0
+nameif out2
+ip add 134.0.18.2 255.255.255.248 standby 134.0.18.3
+no sh
+
+failover
+failover lan unit primary
+failover lan interface FAIL eth0
+failover link STATE eth5
+failover interface ip FAIL 192.168.250.1 255.255.255.252 standby 192.168.250.2
+failover interface ip STATE 192.168.251.1 255.255.255.252 standby 192.168.251.2
+failover key cisco123
+
+int eth0
+no sh
+int eth5
+no sh
+
+** OSPF **
+router ospf 1
+router-id 134.8.8.8
+net 134.0.38.0 255.255.255.248 area 0
+net 134.0.48.0 255.255.255.248 area 0
+net 134.0.28.0 255.255.255.248 area 0
+net 134.0.18.0 255.255.255.248 area 0
+```
+
+### DR-ASA2
+
+```
+! out 쪽의 level 0 은 임시
+! same-security-traffic permit inter-interface - 레벨이 같을때 테스트 용으로 사용
+
+en
+conf t
+hostname DR-ASA2
+
+int eth1
+security-level 100
+nameif in1
+ip add 134.0.39.1 255.255.255.252
+no sh
+int eth2
+security-level 100
+nameif in2
+ip add 134.0.49.1 255.255.255.252
+no sh
+int eth3
+security-level 0
+nameif out1
+ip add 134.0.29.2 255.255.255.252
+no sh
+int eth4
+security-level 0
+nameif out2
+ip add 134.0.19.2 255.255.255.252
+no sh
+
+failover
+failover lan unit secondary
+failover lan interface FAIL eth0
+failover link STATE eth5
+failover interface ip FAIL 192.168.250.1 255.255.255.252 standby 192.168.250.2
+failover interface ip STATE 192.168.251.1 255.255.255.252 standby 192.168.251.2
+failover key cisco123
+
+int eth0
+ no sh
+int eth5
+ no sh
+
+** OSPF **
+router ospf 1
+router-id 134.9.9.9
+net 134.0.39.0 255.255.255.252 area 0
+net 134.0.49.0 255.255.255.252 area 0
+net 134.0.29.0 255.255.255.252 area 0
+net 134.0.19.0 255.255.255.252 area 0
+
+```
+
+### DR-R3
+
+```
+en
+conf t
+
+int lo0
+ip add 134.3.3.3 255.255.255.255
+no sh 
+int g0/0
+ip address 134.0.38.2 255.255.255.252
+no sh
+int g0/1
+ ip address 134.0.39.2 255.255.255.252
+no sh
+int g0/2
+ ip address 134.0.100.1 255.255.255.0
+no sh
+int g0/5
+ ip address 134.0.120.1 255.255.255.0
+no sh
+
+** HSRP - Active **
+int g0/2
+ standby 1 ip 134.0.100.254
+ standby 1 priority 110
+ standby 1 preempt
+
+int g0/5
+ standby 1 ip 134.0.120.254
+ standby 1 priority 110
+ standby 1 preempt
+
+** OSPF **
+router ospf 1
+ router-id 1.3.3.3
+int lo 0
+ip ospf 1 area 0
+ip ospf net point-to-point
+int g0/0
+ip ospf 1 area 0
+int g0/1
+ip ospf 1 area 0
+int g0/2
+ip ospf 1 area 0
+int g0/5
+ip ospf 1 area 0
+```
+
+### DR-R4
+
+```
+en
+conf t
+
+int lo0
+ ip address 134.4.4.4 255.255.255.255
+int g0/0
+ ip address 134.0.48.2 255.255.255.252
+no sh
+int g0/1
+ ip address 134.0.49.2 255.255.255.252
+no sh
+int g0/2
+ ip address 134.0.100.2 255.255.255.0
+no sh
+int g0/5
+ ip address 134.0.120.2 255.255.255.0
+no sh
+
+** HSRP - Standby **
+int g0/2
+ standby 1 ip 134.0.100.254
+ standby 1 priority 100
+ standby 1 preempt
+
+int g0/5
+ standby 1 ip 134.0.120.254
+ standby 1 priority 100
+ standby 1 preempt
+
+** OSPF **
+router ospf 1
+ router-id 1.4.4.4
+int lo 0
+ip ospf 1 area 0
+ip ospf net point-to-point
+int g0/1
+ip ospf 1 area 0
+int g0/2
+ip ospf 1 area 0
+int g0/5
+ip ospf 1 area 0
+
+```
+
+### DR-SW1
+
+```
+en
+conf t
+
+vlan 100
+
+int g0/2  
+ switchport mode access
+ switchport access vlan 100
+
+int g0/0
+ switchport mode access
+ switchport access vlan 100
+
+int g0/1  
+ switchport mode access
+ switchport access vlan 100
+```
+
+### DR-SW2
+
+```
+en
+conf t
+
+vlan 120
+
+int g0/2  
+ switchport mode access
+ switchport access vlan 120
+ 
+int g0/0
+ switchport mode access
+ switchport access vlan 120
+
+int g0/1  
+ switchport mode access
+ switchport access vlan 120
+```
