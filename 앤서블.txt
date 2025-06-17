@@ -1,0 +1,56 @@
+Ubuntu 앤서블
+sudo apt update
+sudo apt install software-properties-common
+sudo add-apt-repository --yes --update ppa:ansible/ansible
+sudo apt install ansible
+
+라우터 SSH 설정
+ip domain name local
+crypto key generate rsa					// 2048 비트
+ip ssh version 2
+ip ssh server algorithm kex diffie-hellman-group14-sha1		//암호화
+username [ID] privilege 15 secret [password]
+
+line vty 0 4
+ password 1q2w3e4r!
+ logging synchronous
+ login local
+ transport input ssh
+
+cfg파일 설정
+
+[defaults]
+host_key_checking = false
+timeout = 10
+ssh_args = -o KexAlgorithms=+diffe-hellman-group14-sha1
+inventory = ./inventory
+
+
+[플레이북 작성 예시]
+---
+- name: 작업내용
+  hosts: 그룹이름
+  gather_facts: no
+
+  vars:
+    realtime: "{{ lookup('pipe', 'date +%Y%m%d_%H%M%S') }}"   	// 로깅을 위한 변수지정
+
+  tasks:
+    - name: Show version (IOS 확인 명령)			// 명령 작업
+      ios_command:
+        commands:						// 수행할 명령
+          - show running-config
+      register: output					// 결과값 변수 지정
+
+    - name: output log					// 로그 작업
+      copy:
+        content: "{{ output.stdout[0] }}"				// 대상 : 변수로 지정한 결과값 복사
+        dest: "./logs/router_output_{{ realtime }}.log"		// 해당 위치에 복사한 내용 로깅
+      delegate_to: localhost					// 로컬 호스트(앤서블 서버)에 저장
+
+
+
+인벤토리 설정
+
+[그룹이름]
+192.168.0.1 ansible_user=[ID] ansible_password=[password] ansible_network_os=ios ansible_connection=network_cli
